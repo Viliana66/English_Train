@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="English Train">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>English Train</title>
+<style>
+:root{
+  --bg:#f4f6f8;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;
+  --dark:#111827;--good:#e9f7ef;--bad:#fff0f0;--accent:#eef2ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+body{padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom)}
+.app{max-width:680px;margin:0 auto;padding:12px 0 28px}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:4px 2px 12px}
+.brand{font-size:20px;font-weight:800}
+.timer{font-variant-numeric:tabular-nums;font-weight:700;background:#fff;border:1px solid var(--line);padding:8px 11px;border-radius:999px}
+.progress{height:7px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-bottom:14px}
+.progress>div{height:100%;background:#111827;width:0}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.pill{font-size:13px;background:#fff;border:1px solid var(--line);padding:7px 10px;border-radius:999px;color:#374151}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;min-height:340px;padding:28px 22px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;box-shadow:0 8px 30px rgba(17,24,39,.06);user-select:none;-webkit-user-select:none}
+.lang{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:16px}
+.sentence{font-size:28px;line-height:1.25;font-weight:750}
+.hint{margin-top:20px;color:var(--muted);font-size:14px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+button{appearance:none;border:0;border-radius:16px;padding:15px 12px;font-size:17px;font-weight:700;touch-action:manipulation}
+button:active{transform:scale(.99)}
+.flip{grid-column:1/-1;background:var(--dark);color:#fff}
+.bad{background:var(--bad);color:#9b1c1c}
+.good{background:var(--good);color:#166534}
+.audio{grid-column:1/-1;background:var(--accent);color:#3730a3}
+.secondary{grid-column:1/-1;background:#fff;color:#374151;border:1px solid var(--line)}
+.hidden{display:none!important}
+.end{background:#fff;border:1px solid var(--line);border-radius:22px;padding:26px 20px;text-align:center}
+.end h2{margin-top:0}
+.small{font-size:13px;color:var(--muted);line-height:1.45}
+@media(max-width:420px){
+ .sentence{font-size:25px}
+ .card{min-height:320px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="brand">English Train</div>
+    <div class="timer" id="timer">15:00</div>
+  </div>
+
+  <div class="progress"><div id="progressBar"></div></div>
+
+  <div class="stats">
+    <div class="pill">Heute: <b id="todayCount">0</b></div>
+    <div class="pill">Gelernt: <b id="learnedCount">0</b></div>
+    <div class="pill">Offen: <b id="openCount">0</b></div>
+  </div>
+
+  <div id="study">
+    <div class="card" id="card" role="button" aria-label="Karte drehen">
+      <div class="lang" id="lang">Български</div>
+      <div class="sentence" id="sentence"></div>
+      <div class="hint" id="hint">Tippen zum Umdrehen</div>
+    </div>
+
+    <div class="controls">
+      <button class="flip" id="flipBtn">Umdrehen</button>
+      <button class="bad hidden" id="againBtn">↻ Noch lernen</button>
+      <button class="good hidden" id="goodBtn">✓ Gelernt</button>
+      <button class="audio hidden" id="audioBtn">🔊 Englisch anhören</button>
+      <button class="secondary" id="pauseBtn">Pause</button>
+    </div>
+  </div>
+
+  <div id="end" class="end hidden">
+    <h2>Session fertig</h2>
+    <p id="endText"></p>
+    <button class="flip" id="restartBtn">Noch 15 Minuten</button>
+    <p class="small">Der Lernstand bleibt auf diesem Gerät gespeichert. Schwierige Karten kommen früher wieder.</p>
+  </div>
+</div>
+
+<script src="cards.js"></script>
+<script>
+(() => {
+  const SESSION_SECONDS = 15*60;
+  const STORE = "english-train-v3";
+  const $ = id => document.getElementById(id);
+  let state, queue=[], current=null, flipped=false, remaining=SESSION_SECONDS, timerId=null, paused=false, sessionSeen=0, sessionGood=0;
+
+  function now(){ return Date.now(); }
+  function todayKey(){ return new Date().toISOString().slice(0,10); }
+  function defaultCardState(){ return {stage:0,due:0,seen:0,good:0,bad:0}; }
+
+  function load(){
+    try{ state=JSON.parse(localStorage.getItem(STORE)) || {}; }catch(e){ state={}; }
+    state.cards = state.cards || {};
+    state.daily = state.daily || {};
+    for(let i=0;i<CARDS.length;i++) if(!state.cards[i]) state.cards[i]=defaultCardState();
+  }
+  function save(){ try{ localStorage.setItem(STORE, JSON.stringify(state)); }catch(e){} }
+
+  function buildQueue(){
+    const t=now();
+    const due=[], fresh=[];
+    for(let i=0;i<CARDS.length;i++){
+      const s=state.cards[i];
+      if(s.seen===0) fresh.push(i);
+      else if(s.due<=t) due.push(i);
+    }
+    due.sort((a,b)=>state.cards[a].due-state.cards[b].due);
+    // First due repetitions, then max 25 new cards for one session.
+    queue = due.concat(fresh.slice(0,25));
+    if(queue.length===0){
+      // Nothing due: allow light review of lowest-stage cards.
+      queue = [...Array(CARDS.length).keys()].sort((a,b)=>state.cards[a].stage-state.cards[b].stage).slice(0,20);
+    }
+  }
+
+  function updateStats(){
+    const learned = Object.values(state.cards).filter(s=>s.stage>=3).length;
+    const open = CARDS.length-learned;
+    $("learnedCount").textContent=learned;
+    $("openCount").textContent=open;
+    $("todayCount").textContent=(state.daily[todayKey()]||0);
+    $("progressBar").style.width=Math.min(100,sessionSeen/20*100)+"%";
+  }
+
+  function showNext(){
+    if(remaining<=0){ finish(); return; }
+    if(queue.length===0) buildQueue();
+    if(queue.length===0){ finish(); return; }
+    current=queue.shift();
+    flipped=false;
+    $("lang").textContent="Български";
+    $("sentence").textContent=CARDS[current].bg;
+    $("hint").textContent="Tippen zum Umdrehen";
+    $("flipBtn").classList.remove("hidden");
+    $("againBtn").classList.add("hidden");
+    $("goodBtn").classList.add("hidden");
+    $("audioBtn").classList.add("hidden");
+  }
+
+  function flip(){
+    if(flipped || current===null) return;
+    flipped=true;
+    $("lang").textContent="English";
+    $("sentence").textContent=CARDS[current].en;
+    $("hint").textContent="Konntest Du den Satz sagen?";
+    $("flipBtn").classList.add("hidden");
+    $("againBtn").classList.remove("hidden");
+    $("goodBtn").classList.remove("hidden");
+    $("audioBtn").classList.remove("hidden");
+  }
+
+  function rate(good){
+    if(current===null || !flipped) return;
+    const s=state.cards[current];
+    s.seen++; sessionSeen++;
+    state.daily[todayKey()] = (state.daily[todayKey()]||0)+1;
+
+    if(good){
+      s.good++; sessionGood++;
+      s.stage=Math.min(6,s.stage+1);
+      const days=[0,1,3,7,14,30,60][s.stage] || 60;
+      s.due=now()+days*86400000;
+    } else {
+      s.bad++;
+      s.stage=Math.max(0,s.stage-1);
+      s.due=now()+5*60*1000;
+      // Reinsert after a few other cards inside the same session.
+      const pos=Math.min(3,queue.length);
+      queue.splice(pos,0,current);
+    }
+    save(); updateStats(); showNext();
+  }
+
+  function speak(){
+    if(!flipped || current===null || !("speechSynthesis" in window)) return;
+    try{
+      speechSynthesis.cancel();
+      const u=new SpeechSynthesisUtterance(CARDS[current].en);
+      u.lang="en-US"; u.rate=0.88;
+      setTimeout(()=>speechSynthesis.speak(u),250);
+    }catch(e){}
+  }
+
+  function tick(){
+    if(paused) return;
+    remaining--;
+    renderTimer();
+    if(remaining<=0) finish();
+  }
+  function renderTimer(){
+    const m=Math.floor(remaining/60), s=remaining%60;
+    $("timer").textContent=String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+  }
+
+  function togglePause(){
+    paused=!paused;
+    $("pauseBtn").textContent=paused?"Weiter":"Pause";
+  }
+
+  function start(){
+    clearInterval(timerId);
+    remaining=SESSION_SECONDS; paused=false; sessionSeen=0; sessionGood=0;
+    $("pauseBtn").textContent="Pause";
+    $("study").classList.remove("hidden");
+    $("end").classList.add("hidden");
+    buildQueue(); renderTimer(); updateStats(); showNext();
+    timerId=setInterval(tick,1000);
+  }
+
+  function finish(){
+    clearInterval(timerId);
+    $("study").classList.add("hidden");
+    $("end").classList.remove("hidden");
+    $("endText").textContent=`Du hast ${sessionSeen} Karten bearbeitet und ${sessionGood} davon als gelernt markiert.`;
+    updateStats();
+  }
+
+  $("card").addEventListener("click", flip);
+  $("flipBtn").addEventListener("click", flip);
+  $("againBtn").addEventListener("click", ()=>rate(false));
+  $("goodBtn").addEventListener("click", ()=>rate(true));
+  $("audioBtn").addEventListener("click", speak);
+  $("pauseBtn").addEventListener("click", togglePause);
+  $("restartBtn").addEventListener("click", start);
+
+  load(); start();
+
+  if("serviceWorker" in navigator){
+    window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  }
+})();
+</script>
+</body>
+</html>
