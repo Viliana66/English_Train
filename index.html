@@ -42,6 +42,11 @@ button:active{transform:scale(.99)}
 .end{background:#fff;border:1px solid var(--line);border-radius:22px;padding:26px 20px;text-align:center}
 .end h2{margin-top:0}
 .small{font-size:13px;color:var(--muted);line-height:1.45}
+.target-word{color:#d11a2a;font-weight:850}
+.filters{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:0 0 14px}
+.filter-btn{background:#fff;border:1px solid var(--line);padding:9px 6px;border-radius:12px;font-size:13px;font-weight:700;color:#374151}
+.filter-btn.active{background:#111827;color:#fff;border-color:#111827}
+@media(max-width:420px){.filters{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:420px){
  .sentence{font-size:25px}
  .card{min-height:320px}
@@ -61,6 +66,12 @@ button:active{transform:scale(.99)}
     <div class="pill">Heute: <b id="todayCount">0</b></div>
     <div class="pill">Gelernt: <b id="learnedCount">0</b></div>
     <div class="pill">Offen: <b id="openCount">0</b></div>
+  </div>
+  <div class="filters" id="filters">
+    <button class="filter-btn active" data-mode="all">Alles</button>
+    <button class="filter-btn" data-mode="noun">Nomen</button>
+    <button class="filter-btn" data-mode="adjective">Adjektive</button>
+    <button class="filter-btn" data-mode="verb">Verben</button>
   </div>
 
   <div id="study">
@@ -93,7 +104,7 @@ button:active{transform:scale(.99)}
   const SESSION_SECONDS = 15*60;
   const STORE = "english-train-v3";
   const $ = id => document.getElementById(id);
-  let state, queue=[], current=null, flipped=false, remaining=SESSION_SECONDS, timerId=null, paused=false, sessionSeen=0, sessionGood=0;
+  let state, queue=[], current=null, flipped=false, remaining=SESSION_SECONDS, timerId=null, paused=false, sessionSeen=0, sessionGood=0, mode='all';
 
   function now(){ return Date.now(); }
   function todayKey(){ return new Date().toISOString().slice(0,10); }
@@ -107,26 +118,33 @@ button:active{transform:scale(.99)}
   }
   function save(){ try{ localStorage.setItem(STORE, JSON.stringify(state)); }catch(e){} }
 
+  function eligible(i){
+    return mode==="all" || (CARDS[i].group||"noun")===mode;
+  }
+
   function buildQueue(){
     const t=now();
     const due=[], fresh=[];
     for(let i=0;i<CARDS.length;i++){
+      if(!eligible(i)) continue;
       const s=state.cards[i];
       if(s.seen===0) fresh.push(i);
       else if(s.due<=t) due.push(i);
     }
     due.sort((a,b)=>state.cards[a].due-state.cards[b].due);
-    // First due repetitions, then max 25 new cards for one session.
     queue = due.concat(fresh.slice(0,25));
     if(queue.length===0){
-      // Nothing due: allow light review of lowest-stage cards.
-      queue = [...Array(CARDS.length).keys()].sort((a,b)=>state.cards[a].stage-state.cards[b].stage).slice(0,20);
+      queue = [...Array(CARDS.length).keys()]
+        .filter(eligible)
+        .sort((a,b)=>state.cards[a].stage-state.cards[b].stage)
+        .slice(0,20);
     }
   }
 
   function updateStats(){
-    const learned = Object.values(state.cards).filter(s=>s.stage>=3).length;
-    const open = CARDS.length-learned;
+    const ids=[...Array(CARDS.length).keys()].filter(eligible);
+    const learned = ids.filter(i=>state.cards[i].stage>=3).length;
+    const open = ids.length-learned;
     $("learnedCount").textContent=learned;
     $("openCount").textContent=open;
     $("todayCount").textContent=(state.daily[todayKey()]||0);
@@ -148,11 +166,28 @@ button:active{transform:scale(.99)}
     $("audioBtn").classList.add("hidden");
   }
 
+  function esc(s){
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  }
+
+  function highlightedEnglish(card){
+    const sentence=card.en || "";
+    const word=(card.word || "").trim();
+    if(!word) return sentence;
+    try{
+      const rx=new RegExp("\\b("+esc(word)+")\\b","i");
+      if(rx.test(sentence)){
+        return sentence.replace(rx,'<span class="target-word">$1</span>');
+      }
+    }catch(e){}
+    return sentence + '<div style="margin-top:18px;font-size:18px"><span class="target-word">'+word+'</span></div>';
+  }
+
   function flip(){
     if(flipped || current===null) return;
     flipped=true;
     $("lang").textContent="English";
-    $("sentence").textContent=CARDS[current].en;
+    $("sentence").innerHTML=highlightedEnglish(CARDS[current]);
     $("hint").textContent="Konntest Du den Satz sagen?";
     $("flipBtn").classList.add("hidden");
     $("againBtn").classList.remove("hidden");
@@ -233,6 +268,16 @@ button:active{transform:scale(.99)}
   $("audioBtn").addEventListener("click", speak);
   $("pauseBtn").addEventListener("click", togglePause);
   $("restartBtn").addEventListener("click", start);
+
+  document.querySelectorAll(".filter-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      mode=btn.dataset.mode;
+      document.querySelectorAll(".filter-btn").forEach(b=>b.classList.toggle("active",b===btn));
+      buildQueue();
+      updateStats();
+      showNext();
+    });
+  });
 
   load(); start();
 
