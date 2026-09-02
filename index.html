@@ -72,6 +72,9 @@ button:active{transform:scale(.99)}
     <button class="filter-btn" data-mode="noun">Nomen</button>
     <button class="filter-btn" data-mode="adjective">Adjektive</button>
     <button class="filter-btn" data-mode="verb">Verben</button>
+    <button class="filter-btn" data-mode="adverb">Adverbien</button>
+    <button class="filter-btn" data-mode="conjunction">Konjunktionen</button>
+    <button class="filter-btn" data-mode="preposition">Präpositionen</button>
   </div>
 
   <div id="study">
@@ -172,15 +175,26 @@ button:active{transform:scale(.99)}
 
   function highlightedEnglish(card){
     const sentence=card.en || "";
-    const word=(card.word || "").trim();
-    if(!word) return sentence;
-    try{
-      const rx=new RegExp("\\b("+esc(word)+")\\b","i");
-      if(rx.test(sentence)){
-        return sentence.replace(rx,'<span class="target-word">$1</span>');
-      }
-    }catch(e){}
-    return sentence + '<div style="margin-top:18px;font-size:18px"><span class="target-word">'+word+'</span></div>';
+    const targets=(card.targets && card.targets.length ? card.targets : [card.word]).filter(Boolean);
+    if(!targets.length) return sentence;
+    let result=sentence;
+    let matched=false;
+    targets
+      .slice()
+      .sort((a,b)=>String(b).length-String(a).length)
+      .forEach(target=>{
+        try{
+          const rx=new RegExp("\\b("+esc(target)+")\\b","gi");
+          if(rx.test(result)){
+            matched=true;
+            result=result.replace(rx,'<span class="target-word">$1</span>');
+          }
+        }catch(e){}
+      });
+    if(!matched){
+      result += '<div style="margin-top:18px;font-size:18px"><span class="target-word">'+targets.join(' / ')+'</span></div>';
+    }
+    return result;
   }
 
   function flip(){
