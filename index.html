@@ -63,41 +63,42 @@ button:active{transform:scale(.99)}
   <div class="progress"><div id="progressBar"></div></div>
 
   <div class="stats">
-    <div class="pill">Heute: <b id="todayCount">0</b></div>
-    <div class="pill">Gelernt: <b id="learnedCount">0</b></div>
-    <div class="pill">Offen: <b id="openCount">0</b></div>
+    <div class="pill">Today: <b id="todayCount">0</b></div>
+    <div class="pill">Learned: <b id="learnedCount">0</b></div>
+    <div class="pill">Mastered: <b id="masteredCount">0</b></div>
+    <div class="pill">Open: <b id="openCount">0</b></div>
   </div>
   <div class="filters" id="filters">
-    <button class="filter-btn active" data-mode="all">Alles</button>
-    <button class="filter-btn" data-mode="noun">Nomen</button>
-    <button class="filter-btn" data-mode="adjective">Adjektive</button>
-    <button class="filter-btn" data-mode="verb">Verben</button>
-    <button class="filter-btn" data-mode="adverb">Adverbien</button>
-    <button class="filter-btn" data-mode="conjunction">Konjunktionen</button>
-    <button class="filter-btn" data-mode="preposition">Präpositionen</button>
+    <button class="filter-btn active" data-mode="all">All</button>
+    <button class="filter-btn" data-mode="noun">Nouns</button>
+    <button class="filter-btn" data-mode="adjective">Adjectives</button>
+    <button class="filter-btn" data-mode="verb">Verbs</button>
+    <button class="filter-btn" data-mode="adverb">Adverbs</button>
+    <button class="filter-btn" data-mode="conjunction">Conjunctions</button>
+    <button class="filter-btn" data-mode="preposition">Prepositions</button>
   </div>
 
   <div id="study">
-    <div class="card" id="card" role="button" aria-label="Karte drehen">
+    <div class="card" id="card" role="button" aria-label="Flip card">
       <div class="lang" id="lang">Български</div>
       <div class="sentence" id="sentence"></div>
       <div class="hint" id="hint">Tippen zum Umdrehen</div>
     </div>
 
     <div class="controls">
-      <button class="flip" id="flipBtn">Umdrehen</button>
-      <button class="bad hidden" id="againBtn">↻ Noch lernen</button>
-      <button class="good hidden" id="goodBtn">✓ Gelernt</button>
-      <button class="audio hidden" id="audioBtn">🔊 Englisch anhören</button>
+      <button class="flip" id="flipBtn">Show English</button>
+      <button class="bad hidden" id="againBtn">↻ Learn again</button>
+      <button class="good hidden" id="goodBtn">✓ Learned</button>
+      <button class="audio hidden" id="audioBtn">🔊 Listen</button>
       <button class="secondary" id="pauseBtn">Pause</button>
     </div>
   </div>
 
   <div id="end" class="end hidden">
-    <h2>Session fertig</h2>
+    <h2>Session complete</h2>
     <p id="endText"></p>
-    <button class="flip" id="restartBtn">Noch 15 Minuten</button>
-    <p class="small">Der Lernstand bleibt auf diesem Gerät gespeichert. Schwierige Karten kommen früher wieder.</p>
+    <button class="flip" id="restartBtn">Another 15 minutes</button>
+    <p class="small">Your progress is saved on this device. Difficult cards return sooner.</p>
   </div>
 </div>
 
@@ -146,12 +147,34 @@ button:active{transform:scale(.99)}
 
   function updateStats(){
     const ids=[...Array(CARDS.length).keys()].filter(eligible);
-    const learned = ids.filter(i=>state.cards[i].stage>=3).length;
+    const learned = ids.filter(i=>state.cards[i].stage>=1).length;
+    const mastered = ids.filter(i=>state.cards[i].stage>=4).length;
     const open = ids.length-learned;
     $("learnedCount").textContent=learned;
+    $("masteredCount").textContent=mastered;
     $("openCount").textContent=open;
     $("todayCount").textContent=(state.daily[todayKey()]||0);
     $("progressBar").style.width=Math.min(100,sessionSeen/20*100)+"%";
+  }
+
+  function frontText(card){
+    // "All" = vocabulary mode: Bulgarian meaning only.
+    if(mode==="all") return card.meaning || card.bg || "";
+    // Category tabs = sentence mode.
+    return card.bg || card.meaning || "";
+  }
+
+  function backHTML(card){
+    // "All" = English word only; irregular verbs show all 3 forms.
+    if(mode==="all"){
+      if(card.group==="verb" && card.forms && card.forms.length===3){
+        return '<span class="target-word">'+card.forms.join(' – ')+'</span>';
+      }
+      const word=card.word || (card.targets ? card.targets.join(" / ") : "");
+      return '<span class="target-word">'+word+'</span>';
+    }
+    // Category tabs = sentence practice.
+    return highlightedEnglish(card);
   }
 
   function showNext(){
@@ -160,9 +183,10 @@ button:active{transform:scale(.99)}
     if(queue.length===0){ finish(); return; }
     current=queue.shift();
     flipped=false;
-    $("lang").textContent="Български";
-    $("sentence").textContent=CARDS[current].bg;
-    $("hint").textContent="Tippen zum Umdrehen";
+    $("lang").textContent="Bulgarian";
+    $("sentence").textContent=frontText(CARDS[current]);
+    $("hint").textContent=mode==="all" ? "Say the English word, then flip." : "Say the English sentence, then flip.";
+    $("flipBtn").textContent="Show English";
     $("flipBtn").classList.remove("hidden");
     $("againBtn").classList.add("hidden");
     $("goodBtn").classList.add("hidden");
@@ -198,15 +222,28 @@ button:active{transform:scale(.99)}
   }
 
   function flip(){
-    if(flipped || current===null) return;
-    flipped=true;
-    $("lang").textContent="English";
-    $("sentence").innerHTML=highlightedEnglish(CARDS[current]);
-    $("hint").textContent="Konntest Du den Satz sagen?";
-    $("flipBtn").classList.add("hidden");
-    $("againBtn").classList.remove("hidden");
-    $("goodBtn").classList.remove("hidden");
-    $("audioBtn").classList.remove("hidden");
+    if(current===null) return;
+
+    // The card can be flipped back and forth as often as needed.
+    flipped=!flipped;
+
+    if(flipped){
+      $("lang").textContent="English";
+      $("sentence").innerHTML=backHTML(CARDS[current]);
+      $("hint").textContent=mode==="all" ? "Did you know the word?" : "Could you say the sentence?";
+      $("flipBtn").textContent="Show Bulgarian";
+      $("againBtn").classList.remove("hidden");
+      $("goodBtn").classList.remove("hidden");
+      $("audioBtn").classList.remove("hidden");
+    } else {
+      $("lang").textContent="Bulgarian";
+      $("sentence").textContent=frontText(CARDS[current]);
+      $("hint").textContent=mode==="all" ? "Say the English word, then flip." : "Say the English sentence, then flip.";
+      $("flipBtn").textContent="Show English";
+      $("againBtn").classList.add("hidden");
+      $("goodBtn").classList.add("hidden");
+      $("audioBtn").classList.add("hidden");
+    }
   }
 
   function rate(good){
@@ -222,9 +259,8 @@ button:active{transform:scale(.99)}
       s.due=now()+days*86400000;
     } else {
       s.bad++;
-      s.stage=Math.max(0,s.stage-1);
+      s.stage=0;
       s.due=now()+5*60*1000;
-      // Reinsert after a few other cards inside the same session.
       const pos=Math.min(3,queue.length);
       queue.splice(pos,0,current);
     }
@@ -235,8 +271,17 @@ button:active{transform:scale(.99)}
     if(!flipped || current===null || !("speechSynthesis" in window)) return;
     try{
       speechSynthesis.cancel();
-      const u=new SpeechSynthesisUtterance(CARDS[current].en);
-      u.lang="en-US"; u.rate=0.88;
+      const card=CARDS[current];
+      let text=card.en || card.word || "";
+      if(mode==="all"){
+        if(card.group==="verb" && card.forms && card.forms.length===3){
+          text=card.forms.join(", ");
+        } else {
+          text=card.word || (card.targets ? card.targets.join(", ") : text);
+        }
+      }
+      const u=new SpeechSynthesisUtterance(text);
+      u.lang="en-US"; u.rate=0.82;
       setTimeout(()=>speechSynthesis.speak(u),250);
     }catch(e){}
   }
@@ -254,7 +299,7 @@ button:active{transform:scale(.99)}
 
   function togglePause(){
     paused=!paused;
-    $("pauseBtn").textContent=paused?"Weiter":"Pause";
+    $("pauseBtn").textContent=paused?"Continue":"Pause";
   }
 
   function start(){
@@ -271,7 +316,7 @@ button:active{transform:scale(.99)}
     clearInterval(timerId);
     $("study").classList.add("hidden");
     $("end").classList.remove("hidden");
-    $("endText").textContent=`Du hast ${sessionSeen} Karten bearbeitet und ${sessionGood} davon als gelernt markiert.`;
+    $("endText").textContent=`${sessionSeen} cards reviewed; ${sessionGood} marked as learned.`;
     updateStats();
   }
 
