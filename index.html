@@ -75,7 +75,6 @@ button:active{transform:scale(.99)}
     <div class="pill">Open: <b id="openCount">0</b></div>
   </div>
   <div class="filters" id="filters">
-    <button class="filter-btn new-tab active" data-mode="new">New</button>
     <button class="filter-btn drill-tab" data-mode="drill_present">Drill Present Simple</button>
     <button class="filter-btn drill-tab" data-mode="drill_past">Drill Past Simple</button>
     <button class="filter-btn drill-tab" data-mode="drill_presentperfect">Drill Present Perfect</button>
@@ -83,7 +82,7 @@ button:active{transform:scale(.99)}
     <button class="filter-btn drill-tab" data-mode="drill_conditional">Drill Conditional</button>
     <button class="filter-btn drill-tab" data-mode="drill_shouldhave">Drill Should Have</button>
     <button class="filter-btn drill-tab" data-mode="drill_pastperfect">Drill Past Perfect</button>
-    <button class="filter-btn" data-mode="all">All</button>
+    <button class="filter-btn active" data-mode="all">All</button>
     <button class="filter-btn" data-mode="noun">Nouns</button>
     <button class="filter-btn" data-mode="adjective">Adjectives</button>
     <button class="filter-btn" data-mode="verb">Verbs</button>
@@ -122,7 +121,7 @@ button:active{transform:scale(.99)}
   const SESSION_SECONDS = 15*60;
   const STORE = "english-train-v3";
   const $ = id => document.getElementById(id);
-  let state, queue=[], current=null, flipped=false, remaining=SESSION_SECONDS, timerId=null, paused=false, sessionSeen=0, sessionGood=0, mode='new';
+  let state, queue=[], current=null, flipped=false, remaining=SESSION_SECONDS, timerId=null, paused=false, sessionSeen=0, sessionGood=0, mode='all';
 
   function now(){ return Date.now(); }
   function todayKey(){ return new Date().toISOString().slice(0,10); }
@@ -143,13 +142,25 @@ button:active{transform:scale(.99)}
     state.verbWords = state.verbWords || {};
     state.migrations = state.migrations || {};
 
-    for(let i=0;i<CARDS.length;i++){
+    // Preserve all existing stable cards 0–874.
+    for(let i=0;i<875;i++){
       if(!state.cards[i]) state.cards[i]=defaultCardState();
     }
 
-    // One-time migration:
-    // only the existing "Verbs" tab uses word-based Learned/Mastered status.
-    // Every other category and every Drill tab stays card-based.
+    // The old NEW block was removed, so Drill indexes moved.
+    // Reset only the Drill range once to avoid inheriting NEW statistics.
+    if(!state.migrations.drillTabsFixedV1){
+      for(let i=875;i<CARDS.length;i++){
+        state.cards[i]=defaultCardState();
+      }
+      state.migrations.drillTabsFixedV1=true;
+    }
+
+    for(let i=875;i<CARDS.length;i++){
+      if(!state.cards[i]) state.cards[i]=defaultCardState();
+    }
+
+    // Word-based status is used only for the normal Verbs tab.
     if(!state.migrations.verbWordOnlyV1){
       for(let i=0;i<CARDS.length;i++){
         const card=CARDS[i];
@@ -159,9 +170,8 @@ button:active{transform:scale(.99)}
 
         const ws=state.verbWords[key];
         const cs=state.cards[i] || defaultCardState();
-
-        // Reuse the former word-statistics if available, otherwise the card history.
         const legacy=(state.words && state.words["verb:"+key]) ? state.words["verb:"+key] : null;
+
         if(legacy){
           ws.stage=Math.max(ws.stage||0, legacy.stage||0);
           ws.seen=Math.max(ws.seen||0, legacy.seen||0);
@@ -175,7 +185,6 @@ button:active{transform:scale(.99)}
         }
       }
       state.migrations.verbWordOnlyV1=true;
-      try{ localStorage.setItem(STORE, JSON.stringify(state)); }catch(e){}
     }
 
     for(let i=0;i<CARDS.length;i++){
@@ -185,6 +194,8 @@ button:active{transform:scale(.99)}
         if(!state.verbWords[key]) state.verbWords[key]=defaultWordState();
       }
     }
+
+    try{ localStorage.setItem(STORE, JSON.stringify(state)); }catch(e){}
   }
 
   function save(){ try{ localStorage.setItem(STORE, JSON.stringify(state)); }catch(e){} }
@@ -195,7 +206,8 @@ button:active{transform:scale(.99)}
 
   function eligible(i){
     const group=CARDS[i].group||"noun";
-    if(mode==="all") return group!=="new" && !isDrillGroup(group);
+    // All contains only the stable vocabulary categories.
+    if(mode==="all") return !isDrillGroup(group);
     return group===mode;
   }
 
@@ -246,7 +258,7 @@ button:active{transform:scale(.99)}
 
   function backHTML(card){
     let html=highlightedEnglish(card);
-    if((mode==="new" || isDrillGroup(mode)) && card.forms && card.forms.length===3){
+    if(isDrillGroup(mode) && card.forms && card.forms.length===3){
       html += '<div class="verb-forms">'+card.forms.join(' – ')+'</div>';
     }
     if(isDrillGroup(mode) && card.tense){
@@ -262,7 +274,7 @@ button:active{transform:scale(.99)}
     current=queue.shift();
     flipped=false;
     const card=CARDS[current];
-    const withTense=(mode==="new" || isDrillGroup(mode)) && card.tense;
+    const withTense=isDrillGroup(mode) && card.tense;
     $("lang").textContent=withTense ? "Bulgarian · "+card.tense : "Bulgarian";
     $("sentence").innerHTML=highlightedBulgarian(card);
     $("hint").textContent="Learn the red word, then flip.";
@@ -324,7 +336,7 @@ button:active{transform:scale(.99)}
     if(current===null) return;
     flipped=!flipped;
     const card=CARDS[current];
-    const withTense=(mode==="new" || isDrillGroup(mode)) && card.tense;
+    const withTense=isDrillGroup(mode) && card.tense;
 
     if(flipped){
       $("lang").textContent=withTense ? "English · "+card.tense : "English";
