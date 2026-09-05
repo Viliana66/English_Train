@@ -57,6 +57,68 @@ button:active{transform:scale(.99)}
  .sentence{font-size:25px}
  .card{min-height:320px}
 }
+
+.main-nav{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin:0 0 12px;
+}
+.main-btn{
+  background:#fff;
+  border:1px solid var(--line);
+  padding:12px 8px;
+  border-radius:14px;
+  font-size:15px;
+  font-weight:850;
+  color:#374151;
+}
+.main-btn.active{
+  background:#111827;
+  color:#fff;
+  border-color:#111827;
+}
+.main-btn.course-main{
+  border-color:#2563eb;
+  color:#1d4ed8;
+}
+.main-btn.course-main.active{
+  background:#2563eb;
+  color:#fff;
+  border-color:#2563eb;
+}
+.submenu{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:7px;
+  margin:0 0 14px;
+}
+.submenu.hidden,
+.course-panel.hidden{
+  display:none;
+}
+.course-panel{
+  border:1px dashed #93c5fd;
+  background:#eff6ff;
+  border-radius:16px;
+  padding:22px 18px;
+  margin:0 0 16px;
+  text-align:center;
+}
+.course-panel h3{
+  margin:0 0 8px;
+  font-size:20px;
+}
+.course-panel p{
+  margin:0;
+  color:#4b5563;
+  line-height:1.45;
+}
+@media(max-width:420px){
+  .main-nav{grid-template-columns:repeat(2,1fr)}
+  .submenu{grid-template-columns:repeat(2,1fr)}
+}
+
 </style>
 </head>
 <body>
@@ -74,21 +136,35 @@ button:active{transform:scale(.99)}
     <div class="pill">Mastered: <b id="masteredCount">0</b></div>
     <div class="pill">Open: <b id="openCount">0</b></div>
   </div>
-  <div class="filters" id="filters">
-    <button class="filter-btn drill-tab" data-mode="drill_present">Drill Present Simple</button>
-    <button class="filter-btn drill-tab" data-mode="drill_past">Drill Past Simple</button>
-    <button class="filter-btn drill-tab" data-mode="drill_presentperfect">Drill Present Perfect</button>
-    <button class="filter-btn drill-tab" data-mode="drill_future">Drill Future</button>
-    <button class="filter-btn drill-tab" data-mode="drill_conditional">Drill Conditional</button>
-    <button class="filter-btn drill-tab" data-mode="drill_shouldhave">Drill Should Have</button>
-    <button class="filter-btn drill-tab" data-mode="drill_pastperfect">Drill Past Perfect</button>
-    <button class="filter-btn active" data-mode="all">All</button>
+  <div class="main-nav" id="mainNav">
+    <button class="main-btn active" data-top="all">All</button>
+    <button class="main-btn" data-top="vocabulary">Vocabulary</button>
+    <button class="main-btn" data-top="drill">Drill</button>
+    <button class="main-btn course-main" data-top="course">Course</button>
+  </div>
+
+  <div class="submenu hidden" id="vocabularyMenu">
     <button class="filter-btn" data-mode="noun">Nouns</button>
     <button class="filter-btn" data-mode="adjective">Adjectives</button>
     <button class="filter-btn" data-mode="verb">Verbs</button>
     <button class="filter-btn" data-mode="adverb">Adverbs</button>
     <button class="filter-btn" data-mode="conjunction">Conjunctions</button>
     <button class="filter-btn" data-mode="preposition">Prepositions</button>
+  </div>
+
+  <div class="submenu hidden" id="drillMenu">
+    <button class="filter-btn drill-tab" data-mode="drill_present">Present Simple</button>
+    <button class="filter-btn drill-tab" data-mode="drill_past">Past Simple</button>
+    <button class="filter-btn drill-tab" data-mode="drill_presentperfect">Present Perfect</button>
+    <button class="filter-btn drill-tab" data-mode="drill_future">Future</button>
+    <button class="filter-btn drill-tab" data-mode="drill_conditional">Conditional</button>
+    <button class="filter-btn drill-tab" data-mode="drill_shouldhave">Should Have</button>
+    <button class="filter-btn drill-tab" data-mode="drill_pastperfect">Past Perfect</button>
+  </div>
+
+  <div class="course-panel hidden" id="coursePanel">
+    <h3>Course</h3>
+    <p>Your course exercises will be added here.</p>
   </div>
 
   <div id="study">
@@ -454,17 +530,66 @@ button:active{transform:scale(.99)}
   $("pauseBtn").addEventListener("click", togglePause);
   $("restartBtn").addEventListener("click", start);
 
+  function setTopSection(section){
+    document.querySelectorAll(".main-btn").forEach(b=>{
+      b.classList.toggle("active", b.dataset.top===section);
+    });
+
+    $("vocabularyMenu").classList.toggle("hidden", section!=="vocabulary");
+    $("drillMenu").classList.toggle("hidden", section!=="drill");
+    $("coursePanel").classList.toggle("hidden", section!=="course");
+
+    if(section==="course"){
+      $("study").classList.add("hidden");
+      $("end").classList.add("hidden");
+      return;
+    }
+
+    $("study").classList.remove("hidden");
+    $("end").classList.add("hidden");
+
+    if(section==="all"){
+      mode="all";
+      document.querySelectorAll(".filter-btn").forEach(b=>b.classList.remove("active"));
+      buildQueue();
+      updateStats();
+      showNext();
+    }
+  }
+
+  document.querySelectorAll(".main-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const section=btn.dataset.top;
+      setTopSection(section);
+    });
+  });
+
   document.querySelectorAll(".filter-btn").forEach(btn=>{
     btn.addEventListener("click",()=>{
       mode=btn.dataset.mode;
       document.querySelectorAll(".filter-btn").forEach(b=>b.classList.toggle("active",b===btn));
+
+      const group=String(mode||"");
+      const top=group.startsWith("drill_") ? "drill" : "vocabulary";
+      document.querySelectorAll(".main-btn").forEach(b=>{
+        b.classList.toggle("active", b.dataset.top===top);
+      });
+
+      $("vocabularyMenu").classList.toggle("hidden", top!=="vocabulary");
+      $("drillMenu").classList.toggle("hidden", top!=="drill");
+      $("coursePanel").classList.add("hidden");
+      $("study").classList.remove("hidden");
+      $("end").classList.add("hidden");
+
       buildQueue();
       updateStats();
       showNext();
     });
   });
 
+
   load(); start();
+  setTopSection("all");
 
   if("serviceWorker" in navigator){
     window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
