@@ -110,6 +110,44 @@ button:active{transform:scale(.99)}
   .submenu{grid-template-columns:repeat(2,1fr)}
 }
 
+
+.stage-stats{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:6px;
+  margin:-6px 0 14px;
+}
+.stage-pill{
+  text-align:center;
+  border:1px solid #93c5fd;
+  border-radius:10px;
+  padding:6px 3px;
+  font-size:11px;
+  font-weight:800;
+  color:#1e3a8a;
+  background:#fff;
+}
+.stage-pill b{display:block;font-size:15px;margin-top:2px}
+.stage-pill.s1{background:#f8fbff}
+.stage-pill.s2{background:#eff6ff}
+.stage-pill.s3{background:#eaf3ff}
+.stage-pill.s4{background:#dbeafe}
+.stage-pill.s5{background:#bfdbfe;border-color:#1e3a8a}
+.stage-indicator{
+  margin-top:18px;
+  padding:6px 11px;
+  border-radius:999px;
+  background:#eff6ff;
+  color:#1e3a8a;
+  border:1px solid #bfdbfe;
+  font-size:13px;
+  font-weight:800;
+}
+@media(max-width:420px){
+  .stage-stats{gap:4px}
+  .stage-pill{font-size:10px;padding:5px 1px}
+}
+
 </style>
 </head>
 <body>
@@ -126,6 +164,13 @@ button:active{transform:scale(.99)}
     <div class="pill">Learned: <b id="learnedCount">0</b></div>
     <div class="pill">Mastered: <b id="masteredCount">0</b></div>
     <div class="pill">Open: <b id="openCount">0</b></div>
+  </div>
+  <div class="stage-stats">
+    <div class="stage-pill s1">Stage 1 <b id="stage1Count">0</b></div>
+    <div class="stage-pill s2">Stage 2 <b id="stage2Count">0</b></div>
+    <div class="stage-pill s3">Stage 3 <b id="stage3Count">0</b></div>
+    <div class="stage-pill s4">Stage 4 <b id="stage4Count">0</b></div>
+    <div class="stage-pill s5">Stage 5 <b id="stage5Count">0</b></div>
   </div>
   <div class="main-nav" id="mainNav">
     <button class="main-btn active" data-top="all">All</button>
@@ -162,7 +207,8 @@ button:active{transform:scale(.99)}
     <div class="card" id="card" role="button" aria-label="Flip card">
       <div class="lang" id="lang">Български</div>
       <div class="sentence" id="sentence"></div>
-      <div class="hint" id="hint">Tippen zum Umdrehen</div>
+      <div class="stage-indicator" id="stageIndicator">Stage 0 / 5 · Open</div>
+      <div class="hint" id="hint">Tap to flip</div>
     </div>
 
     <div class="controls">
@@ -262,6 +308,28 @@ button:active{transform:scale(.99)}
       }
     }
 
+    // One-time migration to a transparent 5-stage system.
+    // Previous Stage 4+ already counted as Mastered, so preserve that
+    // by mapping it to Stage 5.
+    if(!state.migrations.fiveStageV1){
+      for(let i=0;i<CARDS.length;i++){
+        const s=state.cards[i];
+        if(!s) continue;
+        const oldStage=Number(s.stage||0);
+        if(oldStage>=4) s.stage=5;
+        else s.stage=Math.max(0,Math.min(3,oldStage));
+      }
+
+      Object.keys(state.verbWords||{}).forEach(key=>{
+        const w=state.verbWords[key];
+        const oldStage=Number(w.stage||0);
+        if(oldStage>=4) w.stage=5;
+        else w.stage=Math.max(0,Math.min(3,oldStage));
+      });
+
+      state.migrations.fiveStageV1=true;
+    }
+
     try{ localStorage.setItem(STORE, JSON.stringify(state)); }catch(e){}
   }
 
@@ -297,8 +365,33 @@ button:active{transform:scale(.99)}
     }
   }
 
+  function currentLearningStage(cardIndex){
+    const card=CARDS[cardIndex];
+
+    // Word-based status applies ONLY while the Verbs tab is selected.
+    if(mode==="verb" && (card.group||"")==="verb"){
+      const key=verbKey(card);
+      return Math.max(0,Math.min(5,state.verbWords[key]?.stage||0));
+    }
+
+    return Math.max(0,Math.min(5,state.cards[cardIndex]?.stage||0));
+  }
+
+  function renderCurrentStage(){
+    if(current===null) return;
+    const stage=currentLearningStage(current);
+
+    if(stage===0){
+      $("stageIndicator").textContent="Stage 0 / 5 · Open";
+    }else if(stage===5){
+      $("stageIndicator").textContent="Stage 5 / 5 · Mastered";
+    }else{
+      $("stageIndicator").textContent="Stage "+stage+" / 5";
+    }
+  }
+
   function updateStats(){
-    let learned=0, mastered=0, open=0;
+    let stages=[];
 
     if(mode==="verb"){
       const keys=[...new Set(
@@ -306,21 +399,33 @@ button:active{transform:scale(.99)}
           .filter(eligible)
           .map(i=>verbKey(CARDS[i]))
       )];
-      learned=keys.filter(k=>(state.verbWords[k]?.stage||0)>=1).length;
-      mastered=keys.filter(k=>(state.verbWords[k]?.stage||0)>=4).length;
-      open=keys.length-learned;
-    } else {
+
+      stages=keys.map(k=>
+        Math.max(0,Math.min(5,state.verbWords[k]?.stage||0))
+      );
+    }else{
       const ids=[...Array(CARDS.length).keys()].filter(eligible);
-      learned=ids.filter(i=>(state.cards[i]?.stage||0)>=1).length;
-      mastered=ids.filter(i=>(state.cards[i]?.stage||0)>=4).length;
-      open=ids.length-learned;
+      stages=ids.map(i=>
+        Math.max(0,Math.min(5,state.cards[i]?.stage||0))
+      );
     }
+
+    const learned=stages.filter(s=>s>=1).length;
+    const mastered=stages.filter(s=>s===5).length;
+    const open=stages.filter(s=>s===0).length;
 
     $("learnedCount").textContent=learned;
     $("masteredCount").textContent=mastered;
     $("openCount").textContent=open;
     $("todayCount").textContent=(state.daily[todayKey()]||0);
-    $("progressBar").style.width=Math.min(100,sessionSeen/20*100)+"%";
+
+    for(let level=1;level<=5;level++){
+      $("stage"+level+"Count").textContent=
+        stages.filter(s=>s===level).length;
+    }
+
+    $("progressBar").style.width=
+      Math.min(100,sessionSeen/20*100)+"%";
   }
 
   function backHTML(card){
@@ -350,6 +455,7 @@ button:active{transform:scale(.99)}
     $("againBtn").classList.add("hidden");
     $("goodBtn").classList.add("hidden");
     $("audioBtn").classList.add("hidden");
+    renderCurrentStage();
   }
 
   function esc(s){
@@ -408,7 +514,7 @@ button:active{transform:scale(.99)}
     if(flipped){
       $("lang").textContent=withTense ? "English · "+card.tense : "English";
       $("sentence").innerHTML=backHTML(card);
-      $("hint").textContent="Did you know the red word or form?";
+      $("hint").textContent="Know it? Learned = +1 stage · Learn again = -1 stage";
       $("flipBtn").textContent="Show Bulgarian";
       $("againBtn").classList.remove("hidden");
       $("goodBtn").classList.remove("hidden");
@@ -430,41 +536,54 @@ button:active{transform:scale(.99)}
     const card=CARDS[current];
     const s=state.cards[current];
 
-    s.seen++; sessionSeen++;
-    state.daily[todayKey()] = (state.daily[todayKey()]||0)+1;
+    s.seen++;
+    sessionSeen++;
+    state.daily[todayKey()] =
+      (state.daily[todayKey()]||0)+1;
 
+    // Card stage controls scheduling in every category.
     if(good){
-      s.good++; sessionGood++;
-      s.stage=Math.min(6,(s.stage||0)+1);
-      const days=[0,1,3,7,14,30,60][s.stage] || 60;
+      s.good++;
+      sessionGood++;
+      s.stage=Math.min(5,(s.stage||0)+1);
+
+      // Review rhythm:
+      // 1 -> 1 day, 2 -> 2 days, 3 -> 4 days,
+      // 4 -> 7 days, 5/Mastered -> 14 days.
+      const days=[0,1,2,4,7,14][s.stage] || 14;
       s.due=now()+days*86400000;
-
-      // ONLY the regular Verbs tab is word-based.
-      if((card.group||"")==="verb"){
-        const key=verbKey(card);
-        const w=state.verbWords[key] || (state.verbWords[key]=defaultWordState());
-        w.seen=(w.seen||0)+1;
-        w.good=(w.good||0)+1;
-        w.stage=Math.min(6, Math.max(1,(w.stage||0)+1));
-      }
-    } else {
+    }else{
       s.bad++;
-      s.stage=0;
-      s.due=now()+5*60*1000;
 
-      if((card.group||"")==="verb"){
-        const key=verbKey(card);
-        const w=state.verbWords[key] || (state.verbWords[key]=defaultWordState());
-        w.seen=(w.seen||0)+1;
-        w.bad=(w.bad||0)+1;
-        w.stage=0;
-      }
+      // A wrong answer moves exactly ONE stage back.
+      s.stage=Math.max(0,(s.stage||0)-1);
+      s.due=now()+5*60*1000;
 
       const pos=Math.min(3,queue.length);
       queue.splice(pos,0,current);
     }
 
-    save(); updateStats(); showNext();
+    // Word-based progression ONLY in the normal Verbs tab.
+    // A verb seen through All does NOT change this word status.
+    if(mode==="verb" && (card.group||"")==="verb"){
+      const key=verbKey(card);
+      const w=state.verbWords[key] ||
+        (state.verbWords[key]=defaultWordState());
+
+      w.seen=(w.seen||0)+1;
+
+      if(good){
+        w.good=(w.good||0)+1;
+        w.stage=Math.min(5,(w.stage||0)+1);
+      }else{
+        w.bad=(w.bad||0)+1;
+        w.stage=Math.max(0,(w.stage||0)-1);
+      }
+    }
+
+    save();
+    updateStats();
+    showNext();
   }
 
   function speak(){
