@@ -84,8 +84,7 @@ button:active{transform:scale(.99)}
   gap:7px;
   margin:0 0 14px;
 }
-.submenu.hidden,
-.course-panel.hidden{
+.submenu.hidden{
   display:none;
 }
 .course-panel{
@@ -198,9 +197,8 @@ button:active{transform:scale(.99)}
     <button class="filter-btn drill-tab" data-mode="drill_pastperfect">Past Perfect</button>
   </div>
 
-  <div class="course-panel hidden" id="coursePanel">
-    <h3>Course</h3>
-    <p>Your course exercises will be added here.</p>
+  <div class="submenu hidden" id="courseMenu">
+    <button class="filter-btn" data-mode="course_questions">Questions</button>
   </div>
 
   <div id="study">
@@ -339,10 +337,14 @@ button:active{transform:scale(.99)}
     return String(group||"").startsWith("drill_");
   }
 
+  function isCourseGroup(group){
+    return String(group||"").startsWith("course_");
+  }
+
   function eligible(i){
     const group=CARDS[i].group||"noun";
     // All contains only the stable vocabulary categories.
-    if(mode==="all") return !isDrillGroup(group);
+    if(mode==="all") return !isDrillGroup(group) && !isCourseGroup(group);
     return group===mode;
   }
 
@@ -433,7 +435,7 @@ button:active{transform:scale(.99)}
     if(isDrillGroup(mode) && card.forms && card.forms.length===3){
       html += '<div class="verb-forms">'+card.forms.join(' – ')+'</div>';
     }
-    if(isDrillGroup(mode) && card.tense){
+    if((isDrillGroup(mode) || isCourseGroup(mode)) && card.tense){
       html += '<div class="tense-note">'+card.tense+'</div>';
     }
     return html;
@@ -446,7 +448,7 @@ button:active{transform:scale(.99)}
     current=queue.shift();
     flipped=false;
     const card=CARDS[current];
-    const withTense=isDrillGroup(mode) && card.tense;
+    const withTense=(isDrillGroup(mode) || isCourseGroup(mode)) && card.tense;
     $("lang").textContent=withTense ? "Bulgarian · "+card.tense : "Bulgarian";
     $("sentence").innerHTML=highlightedBulgarian(card);
     $("hint").textContent="Learn the red word, then flip.";
@@ -509,7 +511,7 @@ button:active{transform:scale(.99)}
     if(current===null) return;
     flipped=!flipped;
     const card=CARDS[current];
-    const withTense=isDrillGroup(mode) && card.tense;
+    const withTense=(isDrillGroup(mode) || isCourseGroup(mode)) && card.tense;
 
     if(flipped){
       $("lang").textContent=withTense ? "English · "+card.tense : "English";
@@ -647,7 +649,7 @@ button:active{transform:scale(.99)}
 
     $("vocabularyMenu").classList.toggle("hidden", section!=="vocabulary");
     $("drillMenu").classList.toggle("hidden", section!=="drill");
-    $("coursePanel").classList.toggle("hidden", section!=="course");
+    $("courseMenu").classList.toggle("hidden", section!=="course");
 
     if(section==="course"){
       $("study").classList.add("hidden");
@@ -680,14 +682,18 @@ button:active{transform:scale(.99)}
       document.querySelectorAll(".filter-btn").forEach(b=>b.classList.toggle("active",b===btn));
 
       const group=String(mode||"");
-      const top=group.startsWith("drill_") ? "drill" : "vocabulary";
+      const top=group.startsWith("drill_")
+        ? "drill"
+        : group.startsWith("course_")
+          ? "course"
+          : "vocabulary";
       document.querySelectorAll(".main-btn").forEach(b=>{
         b.classList.toggle("active", b.dataset.top===top);
       });
 
       $("vocabularyMenu").classList.toggle("hidden", top!=="vocabulary");
       $("drillMenu").classList.toggle("hidden", top!=="drill");
-      $("coursePanel").classList.add("hidden");
+      $("courseMenu").classList.toggle("hidden", top!=="course");
       $("study").classList.remove("hidden");
       $("end").classList.add("hidden");
 
