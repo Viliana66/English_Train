@@ -147,6 +147,65 @@ button:active{transform:scale(.99)}
   .stage-pill{font-size:10px;padding:5px 1px}
 }
 
+
+.course-select{
+  grid-column:1/-1;
+  width:100%;
+  border:1.5px solid #2563eb;
+  background:#fff;
+  color:#1e3a8a;
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:14px;
+  font-weight:750;
+}
+.course-note{
+  background:#eff6ff;
+  border:1px solid #bfdbfe;
+  border-radius:16px;
+  padding:14px 15px;
+  margin:0 0 14px;
+}
+.course-note.hidden{display:none}
+.course-note-top{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+}
+.course-module{
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:#64748b;
+  font-weight:850;
+}
+.course-title{
+  font-size:17px;
+  color:#1e3a8a;
+  font-weight:850;
+  margin-top:3px;
+}
+.course-link{
+  font-size:12px;
+  font-weight:800;
+  color:#2563eb;
+  text-decoration:none;
+  white-space:nowrap;
+}
+.course-theory,.course-tip{
+  margin-top:10px;
+  font-size:13px;
+  line-height:1.4;
+  color:#334155;
+}
+.course-time{
+  margin-top:9px;
+  color:#64748b;
+  font-size:11px;
+  font-weight:750;
+}
+
 </style>
 </head>
 <body>
@@ -199,6 +258,22 @@ button:active{transform:scale(.99)}
 
   <div class="submenu hidden" id="courseMenu">
     <button class="filter-btn" data-mode="course_questions">Questions</button>
+    <select class="course-select" id="courseLessonSelect" aria-label="Choose Module 2 lesson">
+      <option value="">Module 2 · Choose lesson</option>
+    </select>
+  </div>
+
+  <div class="course-note hidden" id="courseNote">
+    <div class="course-note-top">
+      <div>
+        <div class="course-module" id="courseModule">Module 2 · ТИПОВЕ ДУМИ</div>
+        <div class="course-title" id="courseTitle"></div>
+      </div>
+      <a class="course-link" id="courseLink" href="#" target="_blank" rel="noopener">Original lesson ↗</a>
+    </div>
+    <div class="course-theory"><b>Quick theory:</b> <span id="courseTheory"></span></div>
+    <div class="course-tip"><b>Focus:</b> <span id="courseTip"></span></div>
+    <div class="course-time">3 active exercises · about 2–4 minutes</div>
   </div>
 
   <div id="study">
@@ -231,6 +306,7 @@ button:active{transform:scale(.99)}
 (() => {
   const SESSION_SECONDS = 15*60;
   const STORE = "english-train-v3";
+  const COURSE_META = {"m2_l01": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 1, "titleBg": "ВЪВЕДЕНИЕ В ЕЗИЦИТЕ", "titleEn": "Introduction to languages", "note": "English word order carries a lot of meaning. Notice each word’s job before translating.", "tip": "Spot the pattern first.", "url": "https://jangliiski.com/u2d1/"}, "m2_l02": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 2, "titleBg": "ГЛАГОЛИ, СЪЩЕСТВИТЕЛНИ И SVO", "titleEn": "Verbs, nouns & SVO", "note": "A strong default is Subject + Verb + Object.", "tip": "Find who does what to whom/what.", "url": "https://jangliiski.com/u2d2/"}, "m2_l03": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 3, "titleBg": "ПРИЛАГАТЕЛНИ И ПРИЧАСТИЯ", "titleEn": "Adjectives & participles", "note": "Adjectives describe nouns; -ed often describes feelings, -ing what causes them.", "tip": "Contrast interested / interesting.", "url": "https://jangliiski.com/u2d3/"}, "m2_l04": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 4, "titleBg": "НАРЕЧИЯ", "titleEn": "Adverbs", "note": "Adverbs add information about how, when, where or how often.", "tip": "Learn their usual position in a sentence.", "url": "https://jangliiski.com/u2d4/"}, "m2_l05": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 5, "titleBg": "ОПРЕДЕЛИТЕЛИ", "titleEn": "Determiners", "note": "Determiners come before nouns: a, the, this, some, any, my…", "tip": "Learn them together with the noun.", "url": "https://jangliiski.com/u2d5/"}, "m2_l06": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 6, "titleBg": "СЪЮЗИ", "titleEn": "Conjunctions", "note": "Conjunctions connect ideas: and, but, because, so, if, although.", "tip": "Join two clear ideas.", "url": "https://jangliiski.com/u2d6/"}, "m2_l07": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 7, "titleBg": "ПРЕДЛОЗИ", "titleEn": "Prepositions", "note": "Prepositions are best learned in chunks: on Monday, at work, wait for.", "tip": "Avoid word-for-word translation.", "url": "https://jangliiski.com/u2d7/"}, "m2_l08": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 8, "titleBg": "МЕСТОИМЕНИЯ", "titleEn": "Pronouns", "note": "Pronouns change with their job: I/me/my/mine, she/her/her/hers.", "tip": "Ask: subject, object or possession?", "url": "https://jangliiski.com/u2d8/"}, "m2_l09": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 9, "titleBg": "ЧИСЛИТЕЛНИ, МЕЖДУМЕТИЯ, КОНЕКТОРИ", "titleEn": "Numbers, interjections & connectors", "note": "Numbers give quantity/order; connectors organise speech.", "tip": "Use them in real phrases.", "url": "https://jangliiski.com/u2d9/"}, "m2_l10": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 10, "titleBg": "НЕИЗМЕНЯЕМИ ДУМИ", "titleEn": "Uninflected words", "note": "Many small English words do not change form, but position changes meaning.", "tip": "Learn the whole phrase.", "url": "https://jangliiski.com/u2d10/"}, "m2_l11": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 11, "titleBg": "МЕСТОИМЕНИЯ, ЧИСЛИТЕЛНИ", "titleEn": "Pronouns & numerals", "note": "Combine pronouns with quantities and reference words.", "tip": "Say the complete chunk quickly.", "url": "https://jangliiski.com/u2d11/"}, "m2_l12": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 12, "titleBg": "ПРИЛАГАТЕЛНИ, ПРИЧАСТИЯ (СТЕПЕНУВАНЕ)", "titleEn": "Comparison", "note": "Use -er/-est or more/most; remember irregular forms like better/best.", "tip": "Compare real things.", "url": "https://jangliiski.com/u2d12/"}, "m2_l13": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 13, "titleBg": "НАРЕЧИЯ", "titleEn": "Adverbs – practice", "note": "Frequency and time adverbs have common positions: usually, already, still, yet.", "tip": "Notice where the adverb sits.", "url": "https://jangliiski.com/u2d13/"}, "m2_l14": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 14, "titleBg": "СЪЩЕСТВИТЕЛНИ (МН.ЧИСЛО)", "titleEn": "Nouns – plurals", "note": "Most plurals use -s, but some common nouns are irregular.", "tip": "Learn frequent irregular plurals.", "url": "https://jangliiski.com/u2d14/"}, "m2_l15": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 15, "titleBg": "СЪЩЕСТВИТЕЛНИ (ЧЛЕНУВАНЕ)", "titleEn": "Nouns – articles", "note": "Use a/an for one non-specific thing, the for a specific/known thing, and often no article for general ideas.", "tip": "Ask: does the listener know which one?", "url": "https://jangliiski.com/u2d15/"}, "m2_l16": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 16, "titleBg": "ГЛАГОЛИ (СПРЕЖЕНИЯ)", "titleEn": "Verb forms", "note": "English verbs have few forms, but third-person -s and irregular forms matter.", "tip": "Practise the form inside a sentence.", "url": "https://jangliiski.com/u2d16/"}, "m2_l17": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 17, "titleBg": "ГЛАГОЛИ (ПРОСТИ ВРЕМЕНА)", "titleEn": "Simple tenses", "note": "Simple tenses cover habits, facts and completed events; future often uses will.", "tip": "Use clear time signals.", "url": "https://jangliiski.com/u2d17/"}, "m2_l18": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 18, "titleBg": "ГЛАГОЛИ (СЛОЖНИ ВРЕМЕНА)", "titleEn": "Compound tenses", "note": "Perfect and continuous forms show completion, duration and time relationships.", "tip": "Compare the meaning, not just the form.", "url": "https://jangliiski.com/u2d18/"}, "m2_l19": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 19, "titleBg": "ГЛАГОЛИ (ВИДОВЕ)", "titleEn": "Verb types", "note": "Different verbs take different patterns and complements.", "tip": "Notice what normally follows the verb.", "url": "https://jangliiski.com/u2d19/"}, "m2_l20": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 20, "titleBg": "ИЗРЕЧЕНИЯ", "titleEn": "Sentences", "note": "Build the core sentence first: subject + verb, then add detail.", "tip": "Start short and correct.", "url": "https://jangliiski.com/u2d20/"}, "m2_l21": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 21, "titleBg": "СЪОБЩ. ИЗРЕЧЕНИЯ", "titleEn": "Statements", "note": "Statements normally keep subject before verb.", "tip": "Keep the basic order stable.", "url": "https://jangliiski.com/u2d21/"}, "m2_l22": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 22, "titleBg": "ВЪПР. ИЗРЕЧЕНИЯ", "titleEn": "Questions", "note": "Questions often put an auxiliary before the subject: Do you…? Did she…? Will we…?", "tip": "Automate the opening chunk.", "url": "https://jangliiski.com/u2d22/"}, "m2_l23": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 23, "titleBg": "ЗАПОВ. ИЗРЕЧЕНИЯ", "titleEn": "Imperatives", "note": "Imperatives use the base verb; soften them with please or a polite request.", "tip": "Match the tone to the situation.", "url": "https://jangliiski.com/u2d23/"}, "m2_l24": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 24, "titleBg": "ОТРИЦАНИЯ", "titleEn": "Negatives", "note": "Negatives usually use not with an auxiliary: don’t, didn’t, haven’t, won’t, can’t.", "tip": "Use contractions in speech.", "url": "https://jangliiski.com/u2d24/"}, "m2_l25": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 25, "titleBg": "ДЪЛГИ ИЗРЕЧЕНИЯ", "titleEn": "Long sentences", "note": "Long sentences are easier when built from short chunks linked by time, reason or contrast.", "tip": "Speak in chunks.", "url": "https://jangliiski.com/u2d25/"}, "m2_l26": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 26, "titleBg": "СЛОЖНИ ИЗРЕЧЕНИЯ", "titleEn": "Complex sentences", "note": "Complex sentences combine a main clause with clauses introduced by because, if, when, although, that…", "tip": "Keep each clause simple.", "url": "https://jangliiski.com/u2d26/"}, "m2_l27": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 27, "titleBg": "СЛОВОРЕД", "titleEn": "Word order", "note": "English word order is less flexible than Bulgarian; SVO is a safe default.", "tip": "Choose the simpler order when unsure.", "url": "https://jangliiski.com/u2d27/"}, "m2_l28": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 28, "titleBg": "ОБОБЩЕНИЕ ГРАМАТИКА", "titleEn": "Grammar review", "note": "Review means switching quickly between statements, questions, negatives and tenses.", "tip": "Mix the structures.", "url": "https://jangliiski.com/u2d28/"}, "m2_l29": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 29, "titleBg": "СЪКРАЩЕНИЯ", "titleEn": "Contractions", "note": "Contractions are essential in natural speech: I’m, don’t, didn’t, I’ve, we’ll…", "tip": "Say them as one smooth unit.", "url": "https://jangliiski.com/u2d29/"}, "m2_l30": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 30, "titleBg": "ОБРАЗУВАНЕ ДУМИ", "titleEn": "Word formation", "note": "Prefixes and suffixes create word families: possible/impossible, help/helpful.", "tip": "Learn common forms, not every possible form.", "url": "https://jangliiski.com/u2d30/"}, "m2_l31": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 31, "titleBg": "КОМБИНИРАНЕ НА ГЛАГОЛИ", "titleEn": "Verb combinations", "note": "Some verbs take to + verb, others -ing: want to go, enjoy reading.", "tip": "Learn the combination as one chunk.", "url": "https://jangliiski.com/u2d31/"}, "m2_l32": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 32, "titleBg": "ФРАЗЕОЛОГИЧНИ ГЛАГОЛИ", "titleEn": "Phrasal verbs", "note": "Phrasal verbs combine a verb + particle: find out, pick up, turn on.", "tip": "Learn one useful meaning in context.", "url": "https://jangliiski.com/u2d32/"}, "m2_l33": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 33, "titleBg": "ОБЪРКВАЩИ ДУМИ", "titleEn": "Confusing words", "note": "Confusing words are safest learned through context and collocation.", "tip": "Practise contrast pairs.", "url": "https://jangliiski.com/u2d33/"}, "m2_l34": {"module": "Module 2 · ТИПОВЕ ДУМИ", "lesson": 34, "titleBg": "SOME-, ANY-, EVERY-, NO-", "titleEn": "Some-, any-, every-, no-", "note": "Some/any/every/no combine with -one, -body, -thing and -where.", "tip": "Practise positive, negative and question patterns together.", "url": "https://jangliiski.com/u2d34/"}};
   const $ = id => document.getElementById(id);
   let state, queue=[], current=null, flipped=false, remaining=SESSION_SECONDS, timerId=null, paused=false, sessionSeen=0, sessionGood=0, mode='all';
 
@@ -341,6 +417,10 @@ button:active{transform:scale(.99)}
     return String(group||"").startsWith("course_");
   }
 
+  function isLeanCourseMode(){
+    return String(mode||"").startsWith("course_m2_");
+  }
+
   function eligible(i){
     const group=CARDS[i].group||"noun";
     // All contains only the stable vocabulary categories.
@@ -359,7 +439,7 @@ button:active{transform:scale(.99)}
     }
     due.sort((a,b)=>state.cards[a].due-state.cards[b].due);
     queue = due.concat(fresh.slice(0,25));
-    if(queue.length===0){
+    if(queue.length===0 && !isLeanCourseMode()){
       queue = [...Array(CARDS.length).keys()]
         .filter(eligible)
         .sort((a,b)=>state.cards[a].stage-state.cards[b].stage)
@@ -448,10 +528,18 @@ button:active{transform:scale(.99)}
     current=queue.shift();
     flipped=false;
     const card=CARDS[current];
-    const withTense=(isDrillGroup(mode) || isCourseGroup(mode)) && card.tense;
-    $("lang").textContent=withTense ? "Bulgarian · "+card.tense : "Bulgarian";
-    $("sentence").innerHTML=highlightedBulgarian(card);
-    $("hint").textContent="Learn the red word, then flip.";
+
+    if(card.courseTask){
+      $("lang").textContent=(card.tense||"Course practice")+" · Say the answer aloud";
+      $("sentence").textContent=card.bg||"";
+      $("hint").textContent="Build the answer before you reveal it.";
+    }else{
+      const withTense=(isDrillGroup(mode) || isCourseGroup(mode)) && card.tense;
+      $("lang").textContent=withTense ? "Bulgarian · "+card.tense : "Bulgarian";
+      $("sentence").innerHTML=highlightedBulgarian(card);
+      $("hint").textContent="Learn the red word, then flip.";
+    }
+
     $("flipBtn").textContent="Show English";
     $("flipBtn").classList.remove("hidden");
     $("againBtn").classList.add("hidden");
@@ -511,20 +599,33 @@ button:active{transform:scale(.99)}
     if(current===null) return;
     flipped=!flipped;
     const card=CARDS[current];
-    const withTense=(isDrillGroup(mode) || isCourseGroup(mode)) && card.tense;
 
     if(flipped){
-      $("lang").textContent=withTense ? "English · "+card.tense : "English";
-      $("sentence").innerHTML=backHTML(card);
-      $("hint").textContent="Know it? Learned = +1 stage · Learn again = -1 stage";
+      if(card.courseTask){
+        $("lang").textContent="Answer · Listen and repeat";
+        $("sentence").innerHTML=highlightedEnglish(card);
+        $("hint").textContent="Say it once more naturally, then rate yourself.";
+      }else{
+        const withTense=(isDrillGroup(mode) || isCourseGroup(mode)) && card.tense;
+        $("lang").textContent=withTense ? "English · "+card.tense : "English";
+        $("sentence").innerHTML=backHTML(card);
+        $("hint").textContent="Know it? Learned = +1 stage · Learn again = -1 stage";
+      }
       $("flipBtn").textContent="Show Bulgarian";
       $("againBtn").classList.remove("hidden");
       $("goodBtn").classList.remove("hidden");
       $("audioBtn").classList.remove("hidden");
     } else {
-      $("lang").textContent=withTense ? "Bulgarian · "+card.tense : "Bulgarian";
-      $("sentence").innerHTML=highlightedBulgarian(card);
-      $("hint").textContent="Learn the red word, then flip.";
+      if(card.courseTask){
+        $("lang").textContent=(card.tense||"Course practice")+" · Say the answer aloud";
+        $("sentence").textContent=card.bg||"";
+        $("hint").textContent="Build the answer before you reveal it.";
+      }else{
+        const withTense=(isDrillGroup(mode) || isCourseGroup(mode)) && card.tense;
+        $("lang").textContent=withTense ? "Bulgarian · "+card.tense : "Bulgarian";
+        $("sentence").innerHTML=highlightedBulgarian(card);
+        $("hint").textContent="Learn the red word, then flip.";
+      }
       $("flipBtn").textContent="Show English";
       $("againBtn").classList.add("hidden");
       $("goodBtn").classList.add("hidden");
@@ -585,6 +686,7 @@ button:active{transform:scale(.99)}
 
     save();
     updateStats();
+    if(isLeanCourseMode()) refreshCourseLessonProgress();
     showNext();
   }
 
@@ -650,6 +752,7 @@ button:active{transform:scale(.99)}
     $("vocabularyMenu").classList.toggle("hidden", section!=="vocabulary");
     $("drillMenu").classList.toggle("hidden", section!=="drill");
     $("courseMenu").classList.toggle("hidden", section!=="course");
+    if(section!=="course") $("courseNote").classList.add("hidden");
 
     if(section==="course"){
       $("study").classList.add("hidden");
@@ -697,6 +800,12 @@ button:active{transform:scale(.99)}
       $("study").classList.remove("hidden");
       $("end").classList.add("hidden");
 
+      if(top==="course"){
+        $("courseNote").classList.add("hidden");
+        $("courseLessonSelect").value="";
+      }
+
+      queue=[];
       buildQueue();
       updateStats();
       showNext();
@@ -704,7 +813,91 @@ button:active{transform:scale(.99)}
   });
 
 
-  load(); start();
+  function populateCourseLessons(){
+    const select=$("courseLessonSelect");
+    if(!select) return;
+
+    Object.keys(COURSE_META)
+      .sort((a,b)=>(COURSE_META[a].lesson||0)-(COURSE_META[b].lesson||0))
+      .forEach(id=>{
+        const meta=COURSE_META[id];
+        const group="course_"+id;
+        const indexes=[];
+        for(let i=0;i<CARDS.length;i++){
+          if((CARDS[i].group||"")===group) indexes.push(i);
+        }
+
+        const done=indexes.filter(i=>(state.cards[i]?.seen||0)>0).length;
+        const marker=indexes.length && done===indexes.length ? "✓ " : done>0 ? "• " : "";
+
+        const option=document.createElement("option");
+        option.value=group;
+        option.textContent=
+          marker+"Lesson "+String(meta.lesson).padStart(2,"0")+" · "+meta.titleEn;
+        select.appendChild(option);
+      });
+  }
+
+  function refreshCourseLessonProgress(){
+    const selected=$("courseLessonSelect")?.value||"";
+    const select=$("courseLessonSelect");
+    if(!select) return;
+
+    [...select.options].forEach(option=>{
+      if(!option.value) return;
+      const id=option.value.replace(/^course_/,"");
+      const meta=COURSE_META[id];
+      if(!meta) return;
+
+      const indexes=[];
+      for(let i=0;i<CARDS.length;i++){
+        if((CARDS[i].group||"")===option.value) indexes.push(i);
+      }
+      const done=indexes.filter(i=>(state.cards[i]?.seen||0)>0).length;
+      const marker=indexes.length && done===indexes.length ? "✓ " : done>0 ? "• " : "";
+      option.textContent=
+        marker+"Lesson "+String(meta.lesson).padStart(2,"0")+" · "+meta.titleEn;
+    });
+    select.value=selected;
+  }
+
+  $("courseLessonSelect").addEventListener("change",()=>{
+    const value=$("courseLessonSelect").value;
+    if(!value){
+      $("courseNote").classList.add("hidden");
+      $("study").classList.add("hidden");
+      $("end").classList.add("hidden");
+      return;
+    }
+
+    mode=value;
+    document.querySelectorAll(".filter-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".main-btn").forEach(b=>{
+      b.classList.toggle("active",b.dataset.top==="course");
+    });
+
+    const id=value.replace(/^course_/,"");
+    const meta=COURSE_META[id];
+    if(meta){
+      $("courseModule").textContent=meta.module;
+      $("courseTitle").textContent="Lesson "+meta.lesson+" · "+meta.titleEn;
+      $("courseTheory").textContent=meta.note;
+      $("courseTip").textContent=meta.tip;
+      $("courseLink").href=meta.url;
+      $("courseNote").classList.remove("hidden");
+    }
+
+    $("study").classList.remove("hidden");
+    $("end").classList.add("hidden");
+    queue=[];
+    buildQueue();
+    updateStats();
+    showNext();
+  });
+
+  load();
+  populateCourseLessons();
+  start();
   setTopSection("all");
 
   if("serviceWorker" in navigator){
