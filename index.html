@@ -221,12 +221,57 @@ button:active{transform:scale(.99)}
   white-space:nowrap;
 }
 
+
+.reference-link{
+  grid-column:1/-1;
+  display:block;
+  text-align:center;
+  text-decoration:none;
+  background:#fff;
+  border:1.5px dashed #60a5fa;
+  color:#1e3a8a;
+  border-radius:12px;
+  padding:10px 8px;
+  font-size:13px;
+  font-weight:800;
+}
+.example-sentence{
+  margin-top:20px;
+  padding:13px 14px;
+  border-radius:14px;
+  background:#f8fbff;
+  border:1px solid #dbeafe;
+  font-size:17px;
+  line-height:1.4;
+  color:#1f2937;
+  font-weight:600;
+}
+.example-sentence b{
+  display:block;
+  margin-bottom:5px;
+  color:#64748b;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.usage-note{
+  margin-top:10px;
+  font-size:12px;
+  line-height:1.4;
+  color:#6b7280;
+}
+.source-pattern{
+  margin-top:12px;
+  font-size:12px;
+  color:#64748b;
+}
+
 </style>
 </head>
 <body>
 <div class="app">
   <div class="top">
-    <div class="brand">English Train <span class="app-version">Course M2 · v22</span></div>
+    <div class="brand">English Train <span class="app-version">M2 + VerbPrep · v23</span></div>
     <div class="timer" id="timer">15:00</div>
   </div>
 
@@ -269,6 +314,8 @@ button:active{transform:scale(.99)}
     <button class="filter-btn drill-tab" data-mode="drill_conditional">Conditional</button>
     <button class="filter-btn drill-tab" data-mode="drill_shouldhave">Should Have</button>
     <button class="filter-btn drill-tab" data-mode="drill_pastperfect">Past Perfect</button>
+    <button class="filter-btn drill-tab" data-mode="drill_verbpreps">Verb + Prep.</button>
+    <a class="reference-link" href="reference.html" target="_blank" rel="noopener">📄 Reference sheets</a>
   </div>
 
   <div class="submenu hidden" id="courseMenu">
@@ -527,6 +574,19 @@ button:active{transform:scale(.99)}
 
   function backHTML(card){
     let html=highlightedEnglish(card);
+
+    if((card.group||"")==="drill_verbpreps"){
+      if(card.sourcePhrase && String(card.sourcePhrase).toLowerCase()!==String(card.en||"").toLowerCase()){
+        html += '<div class="source-pattern">Source list: '+card.sourcePhrase+'</div>';
+      }
+      if(card.example){
+        html += '<div class="example-sentence"><b>Example</b>'+card.example+'</div>';
+      }
+      if(card.usageNote){
+        html += '<div class="usage-note">'+card.usageNote+'</div>';
+      }
+    }
+
     if(isDrillGroup(mode) && card.forms && card.forms.length===3){
       html += '<div class="verb-forms">'+card.forms.join(' – ')+'</div>';
     }
@@ -552,7 +612,9 @@ button:active{transform:scale(.99)}
       const withTense=(isDrillGroup(mode) || isCourseGroup(mode)) && card.tense;
       $("lang").textContent=withTense ? "Bulgarian · "+card.tense : "Bulgarian";
       $("sentence").innerHTML=highlightedBulgarian(card);
-      $("hint").textContent="Learn the red word, then flip.";
+      $("hint").textContent=(card.group||"")==="drill_verbpreps"
+        ? "Say the English verb pattern, then flip."
+        : "Learn the red word, then flip.";
     }
 
     $("flipBtn").textContent="Show English";
@@ -624,7 +686,9 @@ button:active{transform:scale(.99)}
         const withTense=(isDrillGroup(mode) || isCourseGroup(mode)) && card.tense;
         $("lang").textContent=withTense ? "English · "+card.tense : "English";
         $("sentence").innerHTML=backHTML(card);
-        $("hint").textContent="Know it? Learned = +1 stage · Learn again = -1 stage";
+        $("hint").textContent=(card.group||"")==="drill_verbpreps"
+          ? "Read the example aloud, then rate yourself."
+          : "Know it? Learned = +1 stage · Learn again = -1 stage";
       }
       $("flipBtn").textContent="Show Bulgarian";
       $("againBtn").classList.remove("hidden");
@@ -709,7 +773,10 @@ button:active{transform:scale(.99)}
     if(!flipped || current===null || !("speechSynthesis" in window)) return;
     try{
       speechSynthesis.cancel();
-      const text=CARDS[current].en || "";
+      const card=CARDS[current];
+      const text=((card.group||"")==="drill_verbpreps" && card.example)
+        ? card.example
+        : (card.en || "");
       const u=new SpeechSynthesisUtterance(text);
       u.lang="en-US";
       u.rate=0.82;
