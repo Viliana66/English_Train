@@ -266,12 +266,33 @@ button:active{transform:scale(.99)}
   color:#64748b;
 }
 
+
+.reference-main{
+  text-decoration:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+@media(min-width:421px){
+  .main-nav{grid-template-columns:repeat(5,1fr)}
+}
+@media(max-width:420px){
+  .main-nav{grid-template-columns:repeat(2,1fr);gap:8px}
+  .reference-main{grid-column:1/-1}
+  .main-btn{padding:11px 7px;font-size:14px}
+  .top{margin-bottom:14px}
+  .stats{margin-bottom:14px}
+  .stage-stats{margin-bottom:16px}
+  .brand{line-height:1.35}
+  .app-version{display:block;width:max-content;margin:5px 0 0 0}
+}
+
 </style>
 </head>
 <body>
 <div class="app">
   <div class="top">
-    <div class="brand">English Train <span class="app-version">M2 + VerbPrep · v23</span></div>
+    <div class="brand">English Train <span class="app-version">M2 + Reference · v24</span></div>
     <div class="timer" id="timer">15:00</div>
   </div>
 
@@ -295,6 +316,7 @@ button:active{transform:scale(.99)}
     <button class="main-btn" data-top="vocabulary">Vocabulary</button>
     <button class="main-btn" data-top="drill">Drill</button>
     <button class="main-btn course-main" data-top="course">Course</button>
+    <a class="main-btn reference-main" href="reference.html">📚 Reference</a>
   </div>
 
   <div class="submenu hidden" id="vocabularyMenu">
@@ -315,7 +337,6 @@ button:active{transform:scale(.99)}
     <button class="filter-btn drill-tab" data-mode="drill_shouldhave">Should Have</button>
     <button class="filter-btn drill-tab" data-mode="drill_pastperfect">Past Perfect</button>
     <button class="filter-btn drill-tab" data-mode="drill_verbpreps">Verb + Prep.</button>
-    <a class="reference-link" href="reference.html" target="_blank" rel="noopener">📄 Reference sheets</a>
   </div>
 
   <div class="submenu hidden" id="courseMenu">
